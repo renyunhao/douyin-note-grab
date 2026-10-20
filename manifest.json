@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Douyin Note Image Grabber",
+  "version": "0.1.0",
+  "description": "按关键词搜索抖音图文，收集笔记的原图 URL 并批量下载。",
+  "permissions": ["tabs", "storage", "downloads", "sidePanel", "declarativeNetRequest"],
+  "host_permissions": [
+    "https://www.douyin.com/*",
+    "https://*.douyin.com/*",
+    "https://*.douyinpic.com/*",
+    "https://*.picoasis.com/*",
+    "https://*.byteimg.com/*",
+    "https://*.ibyteimg.com/*",
+    "https://*.douyinstatic.com/*",
+    "https://*.pstatp.com/*",
+    "https://*.toutiaostatic.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "打开图文取图面板"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.douyin.com/*"],
+      "js": ["capture.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://www.douyin.com/*"],
+      "js": ["content.js"],
+      "world": "ISOLATED",
+      "run_at": "document_start"
+    }
+  ]
+}

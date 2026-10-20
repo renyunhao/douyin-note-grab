@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <h1>抖音图文取图</h1>
+
+    <div class="row">
+      <label>关键词 <input id="keyword" type="text" placeholder="收纳" /></label>
+      <label>数量 <input id="count" type="number" value="20" min="1" max="200" /></label>
+    </div>
+    <div class="row">
+      <label>排序
+        <select id="sort">
+          <option value="综合排序">综合排序</option>
+          <option value="最新发布">最新发布</option>
+          <option value="最多点赞">最多点赞</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label>图片保存结构
+        <select id="layout">
+          <option value="dir">分目录 douyin-grab/笔记ID/1.jpg</option>
+          <option value="flat">平铺到下载目录 dy-笔记ID_1.jpg</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label class="check">
+        <input id="append" type="checkbox" checked />
+        追加模式（保留上次结果，跨任务按笔记 ID 去重）
+      </label>
+    </div>
+
+    <div class="cache">
+      <div id="cacheInfo">缓存：读取中…</div>
+      <button id="clearCache" class="ghost small">清空缓存</button>
+    </div>
+
+    <div class="row btns">
+      <button id="start">开始收集</button>
+      <button id="stop" class="ghost">停止</button>
+      <button id="clear" class="ghost">清空</button>
+    </div>
+
+    <div id="status" class="status">空闲</div>
+
+    <details open>
+      <summary>日志</summary>
+      <pre id="logs"></pre>
+    </details>
+
+    <div class="row btns">
+      <button id="export" class="ghost">导出 JSON</button>
+      <button id="download" class="ghost">下载图片</button>
+      <button id="copy" class="ghost">复制图片 URL</button>
+    </div>
+
+    <div id="list"></div>
+
+    <script src="sidepanel.js"></script>
+  </body>
+</html>

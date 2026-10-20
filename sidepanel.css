@@ -1,0 +1,157 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+}
+body {
+  margin: 0;
+  padding: 10px 12px 24px;
+  background: #16171a;
+  color: #e8e8e8;
+  font-size: 13px;
+}
+h1 {
+  font-size: 15px;
+  margin: 4px 0 12px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a9abb1;
+}
+input,
+select {
+  background: #232428;
+  color: #e8e8e8;
+  border: 1px solid #35363c;
+  border-radius: 5px;
+  padding: 5px 7px;
+  font-size: 13px;
+}
+input#keyword {
+  flex: 1;
+  min-width: 120px;
+}
+input#count {
+  width: 62px;
+}
+button {
+  background: #fe2c55;
+  color: #fff;
+  border: 0;
+  border-radius: 5px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+}
+button.ghost {
+  background: #2c2e33;
+  color: #d7d9dd;
+}
+button:hover {
+  filter: brightness(1.1);
+}
+button.small {
+  padding: 4px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+label.check {
+  align-items: flex-start;
+  line-height: 1.4;
+  color: #cfd2d8;
+}
+.cache {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #1d1e22;
+  border: 1px solid #2a2b30;
+  border-radius: 5px;
+  padding: 7px 8px;
+  margin-bottom: 10px;
+  color: #9ea1a8;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.status {
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: #232428;
+  margin: 6px 0 10px;
+}
+.status.running {
+  background: #2a2410;
+  color: #f0c96c;
+}
+.status.done {
+  background: #12291c;
+  color: #67d391;
+}
+.status.error {
+  background: #2d1418;
+  color: #ff8a8a;
+}
+details {
+  margin-bottom: 10px;
+}
+summary {
+  cursor: pointer;
+  color: #a9abb1;
+}
+pre {
+  background: #0e0f11;
+  border-radius: 5px;
+  padding: 8px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #b9bcc4;
+  user-select: text;
+}
+.logline {
+  min-height: 17px;
+}
+.card {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #26272b;
+}
+.card img {
+  width: 62px;
+  height: 78px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #232428;
+  flex: none;
+}
+.meta {
+  min-width: 0;
+}
+.desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.sub {
+  color: #8b8d94;
+  font-size: 11.5px;
+  margin-top: 3px;
+}
+.link {
+  color: #6cb2f0;
+  font-size: 11.5px;
+}
