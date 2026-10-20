@@ -20,13 +20,19 @@
         </select>
       </label>
     </div>
-    <div class="row">
-      <label>图片保存结构
-        <select id="layout">
-          <option value="dir">分目录 douyin-grab/笔记ID/1.jpg</option>
-          <option value="flat">平铺到下载目录 dy-笔记ID_1.jpg</option>
-        </select>
-      </label>
+    <div class="row col">
+      <div class="row tpl">
+        <label class="grow">文件名模板
+          <input id="template" type="text" spellcheck="false" placeholder="留空则用默认" />
+        </label>
+        <button id="resetTemplate" class="ghost small">恢复默认</button>
+      </div>
+      <div class="hint">
+        变量：<code>{desc}</code> 标题前 40 字（无标题时用笔记 ID）、<code>{seq}</code> 本次下载的全局序号（跨笔记连续）、<code>{index}</code> 笔记内图片序号、<code>{noteId}</code> 笔记 ID、<code>{author}</code> 昵称、<code>{user}</code> 抖音号、<code>{keyword}</code> 关键词。
+        序号可写位数补齐：<code>{seq:3}</code> → <code>001</code>，<code>{index:2}</code> → <code>01</code>（最多 9 位）。
+        模板里有 <code>/</code> 就分目录、没有就平铺。<b>不写扩展名就不加</b>，Chrome 会按图片真实类型补 <code>.webp</code>/<code>.jpg</code>。非法字符会被清掉。
+      </div>
+      <div id="preview" class="preview">预览（内置示例笔记）：—</div>
     </div>
     <div class="row">
       <label class="check">

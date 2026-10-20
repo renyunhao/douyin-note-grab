@@ -28,6 +28,14 @@ async function restore() {
   if (saved) Object.assign(job, saved);
 }
 
+let restored = false;
+async function ensureLoaded() {
+  if (!restored) {
+    await restore();
+    restored = true;
+  }
+}
+
 let cacheTimer = null;
 function flushCache() {
   clearTimeout(cacheTimer);
@@ -224,19 +232,126 @@ function cacheInfo() {
   };
 }
 
-function imageJobs(layout) {
-  const flat = layout === 'flat';
+const DEFAULT_TEMPLATE = '{desc}_{seq}';
+const SEG_LIMIT = 80;
+const DESC_LIMIT = 40;
+
+const resolveTemplate = (t) => (t || '').trim() || DEFAULT_TEMPLATE;
+
+function safeSegment(raw, limit = SEG_LIMIT) {
+  let s = String(raw ?? '')
+    .replace(/[\\/:*?"<>|~/\u0000-\u001f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([-_])\s*/g, '$1')
+    .replace(/[-_. ]{2,}/g, '-')
+    .replace(/^[-_. ]+|[-_. ]+$/g, '');
+  if (s.length > limit) s = s.slice(0, limit).replace(/[-_. ]+$/, '');
+  return s === '.' || s === '..' ? '' : s;
+}
+
+const cleanValue = (v) => String(v ?? '').replace(/[\\/:*?"<>|~\u0000-\u001f]/g, ' ');
+
+const PAD_LIMIT = 9;
+
+function renderName(template, note, index, keyword, seq = index) {
+  const noteId = cleanValue(note?.aweme_id || 'unknown');
+  const values = {
+    noteId,
+    author: cleanValue(note?.author),
+    user: cleanValue(note?.author_uid || note?.author),
+    desc: cleanValue((note?.desc || '').slice(0, DESC_LIMIT)) || noteId,
+    keyword: cleanValue(keyword || job.keyword),
+    index: String(index),
+    seq: String(seq),
+  };
+  const filled = resolveTemplate(template).replace(/\{(\w+)(?::(\d+))?\}/g, (m, key, pad) => {
+    if (!(key in values)) return m;
+    if (!pad || !(key === 'seq' || key === 'index')) return values[key];
+    return values[key].padStart(Math.min(Number(pad), PAD_LIMIT), '0');
+  });
+  const segs = filled.split('/').map((seg) => safeSegment(seg)).filter(Boolean);
+  if (!segs.length) segs.push(`dy-${values.noteId}-${values.seq}`);
+  return segs.join('/');
+}
+
+function imageJobs(template, keyword) {
   const list = [];
+  let seq = 0;
   for (const id of job.order) {
     const note = job.items[id];
     for (let i = 0; i < note.images.length; i++) {
-      list.push({
-        url: note.images[i],
-        name: flat ? `dy-${id}_${i + 1}.jpg` : `douyin-grab/${id}/${i + 1}.jpg`,
-      });
+      list.push({ url: note.images[i], name: renderName(template, note, i + 1, keyword, ++seq) });
     }
   }
   return list;
+}
+
+const SAMPLE_KEYWORD = '收纳';
+const SAMPLE_NOTES = [
+  {
+    aweme_id: '7668522522060524854',
+    author: '收纳酱🏠日常',
+    author_uid: 'shouna55',
+    desc: '厨房收纳/台面整理的 8 个小习惯',
+    images: ['sample-1', 'sample-2'],
+  },
+  {
+    aweme_id: '7668522522060524855',
+    author: '慢慢搬家',
+    author_uid: 'manmanmove',
+    desc: '阳台晾衣杆安装位置怎么选',
+    images: ['sample-3'],
+  },
+];
+
+function sampleNames(template) {
+  const tpl = resolveTemplate(template);
+  const out = [];
+  let seq = 0;
+  for (const note of SAMPLE_NOTES) {
+    for (let i = 0; i < note.images.length && out.length < 3; i++) {
+      out.push(renderName(tpl, note, i + 1, SAMPLE_KEYWORD, ++seq));
+    }
+  }
+  return out;
+}
+
+function statePayload() {
+  return {
+    status: job.status,
+    keyword: job.keyword,
+    count: job.count,
+    append: job.append,
+    collected: collectedThisRun(),
+    total: noteCount(),
+    logs: job.logs.slice(),
+    logDropped: job.logDropped ?? 0,
+    items: job.order.map((id) => job.items[id]),
+    cache: cacheInfo(),
+    defaultTemplate: DEFAULT_TEMPLATE,
+  };
+}
+
+async function queueDownload(template, maxImages) {
+  await ensureLoaded();
+  const slice = imageJobs(template, job.keyword).slice(0, maxImages);
+  addLog(`开始下载 ${slice.length} 张，首个文件名：${slice[0]?.name ?? '（列表为空）'}`);
+  persist();
+  (async () => {
+    await ensureRefererRule();
+    let ok = 0;
+    let firstError = null;
+    for (const it of slice) {
+      const r = await dl({ url: it.url, filename: it.name, conflictAction: 'uniquify', saveAs: false });
+      if (r.ok) ok++;
+      else if (!firstError) firstError = r.error;
+      await new Promise((r2) => setTimeout(r2, 120));
+    }
+    addLog(`下载队列已提交：成功 ${ok}/${slice.length}${firstError ? `，首个错误：${firstError}` : ''}`);
+    failedLogged = 0;
+    persist();
+  })();
+  return slice.length;
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -273,7 +388,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (t === 'panel:start') {
     (async () => {
-      await restore();
+      await ensureLoaded();
       await startRun(msg.cfg);
     })();
     sendResponse({ ok: true });
@@ -288,18 +403,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
   if (t === 'panel:state') {
-    sendResponse({
-      status: job.status,
-      keyword: job.keyword,
-      count: job.count,
-      append: job.append,
-      collected: collectedThisRun(),
-      total: noteCount(),
-      logs: job.logs.slice(),
-      logDropped: job.logDropped ?? 0,
-      items: job.order.map((id) => job.items[id]),
-      cache: cacheInfo(),
-    });
+    (async () => {
+      await ensureLoaded();
+      sendResponse(statePayload());
+    })();
+    return true;
+  }
+  if (t === 'panel:preview') {
+    sendResponse({ ok: true, names: sampleNames(msg.template) });
     return;
   }
   if (t === 'panel:clear') {
@@ -321,7 +432,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
   if (t === 'panel:export') {
-    const name = `douyin-grab/${(job.keyword || 'notes').replace(/[\\/:*?"<>|]/g, '_')}-${Date.now()}.json`;
+    const name = `douyin-grab/${safeSegment(job.keyword, 40) || 'notes'}-${Date.now()}.json`;
     if (!msg.blobUrl) {
       sendResponse({ ok: false, error: 'no blob url' });
       return;
@@ -334,26 +445,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
   if (t === 'panel:download') {
-    const maxImages = msg.maxImages ?? 2000;
-    const slice = imageJobs(msg.layout).slice(0, maxImages);
-    addLog(`开始下载 ${slice.length} 张（${msg.layout === 'flat' ? '平铺' : '分目录'}）`);
-    persist();
-    (async () => {
-      await ensureRefererRule();
-      let ok = 0;
-      let firstError = null;
-      for (const it of slice) {
-        const r = await dl({ url: it.url, filename: it.name, conflictAction: 'uniquify', saveAs: false });
-        if (r.ok) ok++;
-        else if (!firstError) firstError = r.error;
-        await new Promise((r2) => setTimeout(r2, 120));
-      }
-      addLog(`下载队列已提交：成功 ${ok}/${slice.length}${firstError ? `，首个错误：${firstError}` : ''}`);
-      failedLogged = 0;
-      persist();
-    })();
-    sendResponse({ ok: true, queued: slice.length });
-    return;
+    queueDownload(msg.template, msg.maxImages ?? 2000).then((queued) => sendResponse({ ok: true, queued }));
+    return true;
   }
 });
 

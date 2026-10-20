@@ -3,7 +3,8 @@ const els = {
   keyword: $('keyword'),
   count: $('count'),
   sort: $('sort'),
-  layout: $('layout'),
+  template: $('template'),
+  preview: $('preview'),
   append: $('append'),
   cacheInfo: $('cacheInfo'),
   status: $('status'),
@@ -14,9 +15,26 @@ const els = {
 let snapshot = { items: [], logs: [], logDropped: 0, status: 'idle', collected: 0, total: 0, count: 0, keyword: '', cache: null };
 let renderedLogs = 0;
 let renderedDropped = -1;
+let templateReady = false;
+let previewTimer = null;
 
 function send(type, extra = {}) {
   return new Promise((resolve) => chrome.runtime.sendMessage({ type, ...extra }, resolve));
+}
+
+async function updatePreview() {
+  const p = await send('panel:preview', { template: els.template.value });
+  els.preview.textContent = p?.names?.length
+    ? `预览（内置示例笔记）：${p.names.join('　')}`
+    : '预览：—';
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    chrome.storage.local.set({ nameTemplate: els.template.value });
+    updatePreview();
+  }, 250);
 }
 
 const notice = (msg) => send('dyg:log', { msg });
@@ -83,6 +101,10 @@ function render() {
 async function poll() {
   const next = await send('panel:state');
   if (next) snapshot = next;
+  if (!templateReady) {
+    templateReady = true;
+    if (!els.template.value && snapshot.defaultTemplate) els.template.value = snapshot.defaultTemplate;
+  }
   render();
 }
 
@@ -132,8 +154,13 @@ $('export').onclick = async () => {
 };
 $('download').onclick = async () => {
   if (!snapshot.items.length) return alert('还没有数据');
-  const r = await send('panel:download', { maxImages: 2000, layout: els.layout.value });
-  if (r?.queued) notice(`已排入下载队列 ${r.queued} 张（${els.layout.value === 'flat' ? '平铺' : '分目录'}）`);
+  const r = await send('panel:download', { maxImages: 2000, template: els.template.value });
+  if (r?.queued) notice(`已排入下载队列 ${r.queued} 张`);
+};
+els.template.addEventListener('input', schedulePreview);
+$('resetTemplate').onclick = () => {
+  els.template.value = snapshot.defaultTemplate ?? '';
+  schedulePreview();
 };
 $('copy').onclick = async () => {
   const urls = snapshot.items.flatMap((n) => n.images);
@@ -141,6 +168,11 @@ $('copy').onclick = async () => {
   await navigator.clipboard.writeText(urls.join('\n'));
   notice(`已复制 ${urls.length} 条图片 URL`);
 };
+
+chrome.storage.local.get('nameTemplate').then(({ nameTemplate }) => {
+  if (nameTemplate) els.template.value = nameTemplate;
+  updatePreview();
+});
 
 poll();
 setInterval(poll, 1200);

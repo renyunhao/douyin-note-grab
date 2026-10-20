@@ -20,6 +20,7 @@
       aweme_type: aweme.aweme_type,
       desc: aweme.desc || '',
       author: aweme.author?.nickname || aweme.author?.unique_id || '',
+      author_uid: aweme.author?.unique_id || '',
       create_time: aweme.create_time || null,
       digg: aweme.statistics?.digg_count ?? null,
       page_url: `https://www.douyin.com/note/${aweme.aweme_id}`,
